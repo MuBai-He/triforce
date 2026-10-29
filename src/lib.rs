@@ -294,3 +294,28 @@ impl Beamformer for Triforce {
 }
 
 lv2_descriptors!(Triforce);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const RATE: f32 = 48000f32;
+    const BLOCK: usize = 1024;
+
+    /// Feed the same signal to all three inputs, i.e. a source on the array's normal.
+    fn run(triforce: &mut Triforce, input: &[f32]) -> Vec<f32> {
+        let mut output = vec![0f32; input.len()];
+        for (i, o) in input.chunks(BLOCK).zip(output.chunks_mut(BLOCK)) {
+            triforce.process_slice(i, i, i, o, 500f32, i.len());
+        }
+        output
+    }
+
+    #[test]
+    fn silence_in_silence_out() {
+        let mut triforce = Triforce::with_sample_rate(RATE);
+        let output = run(&mut triforce, &[0f32; RATE as usize]);
+        let peak = output.iter().fold(0f32, |m, v| m.max(v.abs()));
+        assert_eq!(peak, 0f32, "silent input produced output peaking at {peak}");
+    }
+}
